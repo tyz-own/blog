@@ -1,9 +1,23 @@
-# RUST FUTURES
+<style>
+pre {
+  overflow-y: auto;
+  max-height: 300px;
+}
+</style>
 
-[原文地址 200行代码讲透RUST FUTURES](https://stevenbai.top/rust/futures_explained_in_200_lines_of_rust/#%E8%BF%99%E6%9C%AC%E4%B9%A6%E6%B6%B5%E7%9B%96%E7%9A%84%E5%86%85%E5%AE%B9)
+
+# RUST FUTURES-Week1
+
+## 参考文章
+
+[200行代码讲透RUST FUTURES](https://stevenbai.top/rust/futures_explained_in_200_lines_of_rust/#%E8%BF%99%E6%9C%AC%E4%B9%A6%E6%B6%B5%E7%9B%96%E7%9A%84%E5%86%85%E5%AE%B9)
+
+[RUST圣经](https://course.rs/advance/async/pin-unpin.html#%E5%B0%86%E5%9B%BA%E5%AE%9A%E4%BD%8F%E7%9A%84-future-%E5%8F%98%E4%B8%BA-unpin)
+
 
 ## 绿色线程(Green Threads)
 
+### 代码
 
 原文档的green threads可能因为版本问题已经不能编译通过了，这是修改后的：
 
@@ -169,28 +183,13 @@ impl Runtime {
                 .find(|t| t.state == State::Available)
                 .expect("no available thread.");
             println!("spawn use RUNTIME to find available thread");
-            /*
-            let size = available.stack.len();
-            let s_ptr = available.stack.as_mut_ptr();
-
-            available.task = Some(Box::new(f));
-            available.ctx.thread_ptr = available as *const Thread as u64;
-            ptr::write_unaligned(s_ptr.add(size - 8).cast::<u64>(), guard as usize as u64);
-            ptr::write_unaligned(s_ptr.add(size - 16) as *mut u64, call as usize as u64);
-            available.ctx.rsp = s_ptr.add(size - 16) as u64;
-            println!("available.ctx.rsp = {:x}", available.ctx.rsp);
-            available.state = State::Ready;
-            */
+            
             let size = available.stack.len();
             let s_ptr = available.stack.as_mut_ptr();
             let s_ptr = s_ptr.add(size);
             let s_ptr = s_ptr as u64 & !0xf;
             let s_ptr = s_ptr as *mut u8;
-            /*
-            ptr::write_unaligned(s_ptr.sub(8).cast::<u64>(), guard as usize as u64);
-            ptr::write_unaligned(s_ptr.sub(16) as *mut u64, call as usize as u64);
-            available.ctx.rsp = s_ptr.sub(16) as u64;
-            */
+            
             // 这俩都得对齐
             ptr::write_unaligned(s_ptr.sub(16).cast::<u64>(), guard as usize as u64);
             ptr::write_unaligned(s_ptr.sub(32) as *mut u64, __call as usize as u64);
@@ -310,8 +309,10 @@ fn main() {
     runtime.run();
     println!("Hello, world!");
 }
-
 ```
+    
+
+
 都是佬们写的，我只是个搬运工，之前有个`ctx`没对齐导致打印`ctx`时会出现`segment fault`，现已解决，大家可放心食用。
 
 ## 基于回调
@@ -379,7 +380,6 @@ if let Some(result) = call_callback("double", 5, &callbacks) {
 let x = 10;
 let add_x = |y| x + y;
 println!("{}", add_x(5)); // 输出 15
-
 ```
 
 在这个例子中，闭包 add_x 捕获了变量 x，并将其与参数 y 相加。闭包可以自动推断捕获变量的引用类型。
@@ -417,4 +417,69 @@ timer(200)
 .then(() => console.log('I'm the last one));
 
 ```
+
+rust 中的 `Future` 和其它语言中的 `Promise` 类似，但它们是异步的。
+
+## Future
+
+[Future 流程](https://course.rs/advance/async/future-excuting.html#future-%E7%89%B9%E5%BE%81)
+
+Future 是一种异步计算的结果，它代表了一个未来才会结束的计算。在 Rust 中，Future 是一种异步计算的抽象，它允许我们以一种统一的方式处理异步操作，而无需关心具体的实现细节。
+
+
+### Future 流程
+
+
+1. `Spawner` 方法用于生成 `Future` , 然后将它放入 __消息通道__ 中。
+2. 执行器需要从 __消息通道( channel )__ 中拉取事件，然后运行它们。当一个任务准备好后（可以继续执行），它会将自己放入消息通道中，然后等待执行器 `poll` 。
+3. 若在当前 `poll` 中， `Future` 可以被完成，则会返回 `Poll::Ready(result)` ，反之则返回 `Poll::Pending`， 并且安排一个 `wake` 函数：
+4. 当未来 `Future` 准备好进一步执行时， 该函数会被调用，然后将该 `Future` 送入 __消息管道__ ，执行器从 __消息管道__ 拉取 `Future`, 再次调用 `poll` 方法，此时 `Future` 就可以继续执行了。(进入步骤2)
+
+![alt text](image.png)
+
+
+### 关于 `Pin` 和 `Unpin` 的理解
+
+#### 官方内容：
+
+
+将固定住的 `Future` 变为 `Unpin`
+之前的章节我们有提到 `async` 函数返回的 `Future` 默认就是 `!Unpin` 的。
+
+但是，在实际应用中，一些函数会要求它们处理的 `Future` 是 `Unpin` 的，此时，若你使用的 `Future` 是 `!Unpin` 的，必须要使用以下的方法先将 `Future` 进行固定:
+
+`Box::pin`， 创建一个 `Pin<Box<T>>`
+`pin_utils::pin_mut!`， 创建一个 `Pin<&mut T>`
+固定后获得的 `Pin<Box<T>>` 和 `Pin<&mut T>` 既可以用于 `Future` ，又会自动实现 `Unpin`。
+
+```rust
+use pin_utils::pin_mut; // `pin_utils` 可以在crates.io中找到
+
+// 函数的参数是一个`Future`，但是要求该`Future`实现`Unpin`
+fn execute_unpin_future(x: impl Future<Output = ()> + Unpin) { /* ... */ }
+
+let fut = async { /* ... */ };
+// 下面代码报错: 默认情况下，`fut` 实现的是`!Unpin`，并没有实现`Unpin`
+// execute_unpin_future(fut);
+
+// 使用`Box`进行固定
+let fut = async { /* ... */ };
+let fut = Box::pin(fut);
+execute_unpin_future(fut); // OK
+
+// 使用`pin_mut!`进行固定
+let fut = async { /* ... */ };
+pin_mut!(fut);
+execute_unpin_future(fut); // OK
+
+```
+
+#### 个人理解：
+
+在这里，`Pin` 是一个包装着 __不可移动类型的指针__ ( eg: `Box`) 的类型 ，被 `Pin` 中指针包装的类型不能被移动， 但 `Pin` 的指针可以被移动和使用。
+
+
+
+
+
 
