@@ -17,7 +17,7 @@ Hello, world!
 ```
 ## 理解应用程序执行环境
 在现代通用操作系统（如 Linux）上运行应用程序，需要多层次的执行环境栈支持：
-![alt text](image.png)
+![alt text](./image/image.png)
 
 ## 平台与目标三元组
 编译器在编译、链接得到可执行文件时需要知道，程序要在哪个 平台 (Platform) 上运行， 目标三元组 (Target Triplet) 描述了目标平台的 CPU 指令集、操作系统类型和标准运行时库。
