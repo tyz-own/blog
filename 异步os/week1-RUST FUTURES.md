@@ -142,7 +142,7 @@ Future 是一种异步计算的结果，它代表了一个未来才会结束的�
 3. 若在当前 `poll` 中， `Future` 可以被完成，则会返回 `Poll::Ready(result)` ，反之则返回 `Poll::Pending`， 并且安排一个 `wake` 函数：
 4. 当未来 `Future` 准备好进一步执行时， 该函数会被调用，然后将该 `Future` 送入 __消息管道__ ，执行器从 __消息管道__ 拉取 `Future`, 再次调用 `poll` 方法，此时 `Future` 就可以继续执行了。(进入步骤2)
 
-![alt text](./resource/image.png)
+![alt text](./resource/future.png)
 
 
 ### 关于 `Pin` 和 `Unpin` 的理解
