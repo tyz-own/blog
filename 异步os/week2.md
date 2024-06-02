@@ -41,7 +41,7 @@
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 ```
-[通过协程进行异步调用](./resource/async.rs)
+代码部分： [通过协程进行异步调用](./resource/async.rs)
 
 输出结果：
 
