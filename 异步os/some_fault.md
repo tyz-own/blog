@@ -1,9 +1,3 @@
-+++
-title = 'Some_fault'
-date = 2024-06-08T12:01:49+08:00
-draft = false
-tags = ['Rust','reqwest']
-+++
 # some falut
 
 ## 参考文章
