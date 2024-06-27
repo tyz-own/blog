@@ -171,6 +171,7 @@ async fn run(sec: u64, f: fn()) {
 ![alt text](./resource/not_embassy_result.png)
 
 在加入 `embassy` 框架后，我们使用 `embassy_time_driver::Timer::after_secs()` 来设置定时器中断，并设置 `sstatus.sie` 使能中断。这时定时器中断会在 `embassy_runtime()` 函数中触发，而且会异步等待  `user` 中的 `sleep1` 执行。不会一直触发 `Interrupt::SupervisorTimer` , 大大降低了cpu的功耗。
+
 ![alt text](./resource/embassy_result.png)
 
 ## 代码链接
